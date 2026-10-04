@@ -23,6 +23,12 @@ classifiers = [
 ]
 dependencies = []
 
+[project.urls]
+Repository = "https://github.com/kai6589c-svg/DAOGraph"
+Documentation = "https://github.com/kai6589c-svg/DAOGraph/blob/main/docs/api.md"
+Issues = "https://github.com/kai6589c-svg/DAOGraph/issues"
+Releases = "https://github.com/kai6589c-svg/DAOGraph/releases"
+
 [project.optional-dependencies]
 dev = ["pytest>=8,<10", "pytest-cov>=6,<8", "ruff>=0.11,<1", "mypy>=1.15,<2", "build>=1.2,<2", "twine>=6,<7"]
 
@@ -32,7 +38,7 @@ core-metadata-version = "2.4"
 
 [tool.hatch.build.targets.sdist]
 core-metadata-version = "2.4"
-include = ["src", "tests", "examples", "docs", ".github", ".gitignore", "README.md", "README.zh-CN.md", "LICENSE", "CHANGELOG.md", "CONTRIBUTING.md", "pyproject.toml"]
+include = ["src", "tests", "examples", "docs", ".github", ".gitignore", "README.md", "LICENSE", "CHANGELOG.md", "CONTRIBUTING.md", "pyproject.toml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

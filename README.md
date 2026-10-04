@@ -17,18 +17,27 @@ The package has three implementation modules and no runtime dependencies:
 | `situation` | Six situation signals, evidence, pluggable assessment |
 | `constraints` | Step limit, capability allowlist, approval, custom hard rules |
 
-[中文说明](README.zh-CN.md) · [Architecture](docs/architecture.md) ·
+[Architecture](docs/architecture.md) ·
 [API reference](docs/api.md) · [Release guide](docs/releasing.md)
 
 ## 🚀 Install and run
 
-Install from a local checkout; this version has not been published to PyPI:
+Clone the repository and install from source. This version has not been published
+to PyPI:
 
 ```bash
+git clone https://github.com/kai6589c-svg/DAOGraph.git
+cd DAOGraph
 python -m pip install -e .
 python examples/adaptive_research.py
 python examples/approval.py
 python examples/async_tools.py
+```
+
+Install directly from GitHub when you do not need the example files:
+
+```bash
+python -m pip install 'git+https://github.com/kai6589c-svg/DAOGraph.git'
 ```
 
 For development:

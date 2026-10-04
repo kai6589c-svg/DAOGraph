@@ -1,13 +1,14 @@
 # Releasing DAOGraph
 
-_Publish the prepared repository and distributions when the owner is ready._
+_Prepare and publish alpha releases and distributions._
 
 ---
 
 ## ✅ Verify the source
 
-The repository is prepared locally. GitHub publication and PyPI upload are
-separate owner actions. Distribution version `0.1.0` is an alpha release.
+The repository is [kai6589c-svg/DAOGraph](https://github.com/kai6589c-svg/DAOGraph).
+GitHub releases and PyPI uploads are separate publishing actions. Distribution
+version `0.1.0` is an alpha release.
 
 ```bash
 python -m pip install -e '.[dev]'
@@ -22,19 +23,13 @@ python -m twine check dist/*
 The sdist includes source, tests, examples, and documentation. The wheel includes
 the typed `daograph` package. The core has no third-party runtime dependencies.
 
-## 🚀 Publish to GitHub
+## 🚀 Push changes to GitHub
 
-Run these from the repository root after deciding the owner and visibility.
-The first command uses the account currently signed in to GitHub CLI:
+Run these from a checkout with write access to the repository:
 
 ```bash
-gh repo create DAOGraph --public --source=. --remote=origin --push \
-  --description 'Situation-driven adaptive agent graphs with minimal constraints'
+git push origin main
 ```
-
-Use `--private` for a private repository. For an organization, replace `DAOGraph`
-with `ORGANIZATION/DAOGraph`. If the name already exists, inspect it first; do not
-force push into an unrelated repository.
 
 GitHub Actions starts on pushes and pull requests. It runs the test matrix,
 formatting, static type checking, examples, and package validation. Tagged pushes
@@ -70,5 +65,4 @@ python -m twine upload --repository testpypi dist/*
 # python -m twine upload dist/*
 ```
 
-Once the GitHub URL is final, add it under `[project.urls]` in `pyproject.toml`.
 Bump both project version and `daograph.__version__` for subsequent releases.
