@@ -43,13 +43,31 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: python -m pip install -e '.[dev]'
-      - run: pytest --cov=daograph --cov-report=term-missing --cov-fail-under=85
+      - run: pytest --cov=daograph --cov-report=term-missing --cov-fail-under=90
       - run: python examples/adaptive_research.py
       - run: python examples/approval.py
       - run: python examples/async_tools.py
 
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -e .
+      - run: python benchmarks/run.py --split development --output benchmark-results
+      - run: python benchmarks/run.py --split evaluation --output benchmark-results
+      - uses: actions/upload-artifact@v7
+        with:
+          name: daograph-research-benchmark
+          path: benchmark-results/*
+          if-no-files-found: error
+
   package:
-    needs: [quality, test]
+    needs: [quality, test, benchmark]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

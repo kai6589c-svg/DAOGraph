@@ -8,7 +8,7 @@ _Prepare and publish alpha releases and distributions._
 
 The repository is [kai6589c-svg/DAOGraph](https://github.com/kai6589c-svg/DAOGraph).
 GitHub releases and PyPI uploads are separate publishing actions. Distribution
-version `0.1.0` is an alpha release.
+version `0.2.0` is an alpha release.
 
 ```bash
 python -m pip install -e '.[dev]'
@@ -18,9 +18,10 @@ ruff format --check .
 mypy
 python -m build
 python -m twine check dist/*
+python benchmarks/run.py --split evaluation --output benchmark-results
 ```
 
-The sdist includes source, tests, examples, and documentation. The wheel includes
+The sdist includes source, tests, examples, the frozen benchmark corpus, and documentation. The wheel includes
 the typed `daograph` package. The core has no third-party runtime dependencies.
 
 ## 🚀 Push changes to GitHub
@@ -38,19 +39,23 @@ artifacts. The workflow does not automatically publish a package or GitHub relea
 
 ## 📦 Create an alpha release
 
-After GitHub CI passes:
+After the exact implementation commit passes all GitHub CI jobs, including the
+offline benchmark:
 
 ```bash
-git tag -a v0.1.0 -m 'DAOGraph 0.1.0 alpha'
-git push origin v0.1.0
+git tag -a v0.2.0 -m 'DAOGraph 0.2.0 alpha'
+git push origin v0.2.0
 ```
 
-Wait for the tag's CI run. Then publish the built artifacts:
+Wait for the tag's CI run. Download its `daograph-distributions` and
+`daograph-research-benchmark` artifacts with `gh run download RUN_ID`. Publish
+those CI-built files, the corpus lock, benchmark JSON/Markdown reports, source
+archive, and SHA256 sums. Then publish the alpha release:
 
 ```bash
-gh release create v0.1.0 dist/daograph-0.1.0-py3-none-any.whl \
-  dist/daograph-0.1.0.tar.gz --verify-tag --prerelease \
-  --title 'DAOGraph 0.1.0 alpha' --notes-file CHANGELOG.md
+gh release create v0.2.0 dist/daograph-0.2.0-py3-none-any.whl \
+  dist/daograph-0.2.0.tar.gz --verify-tag --prerelease \
+  --title 'DAOGraph 0.2.0 alpha' --notes-file CHANGELOG.md
 ```
 
 ## 📚 Optional PyPI publication

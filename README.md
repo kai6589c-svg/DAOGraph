@@ -1,11 +1,12 @@
 # DAOGraph
 
-_Situation-driven adaptive agent graphs with minimal constraints. Python 3.11+, MIT, alpha 0.1.0._
+_Situation-driven adaptive agent graphs with minimal constraints. Python 3.11+, MIT, alpha 0.2.0._
 
 ---
 
-DAOGraph turns observations into a **Situation**, asks a planner to compose the
-current execution DAG, executes one ready task, and repeats. A new observation
+DAOGraph helps research agents decide when to retrieve, investigate a conflict,
+replan, and stop. It turns observations into a **Situation**, composes or reuses
+an execution DAG, checks execution boundaries, and executes one ready task. A new observation
 can insert verification, remove unnecessary work, or replace the remaining path.
 The host fixes the goal, registered capabilities, and execution boundaries.
 
@@ -13,17 +14,56 @@ The package has three implementation modules and no runtime dependencies:
 
 | Module | Responsibility |
 | --- | --- |
-| `graph` | Adaptive DAGs, state updates, streaming, approval checkpoints |
-| `situation` | Six situation signals, evidence, pluggable assessment |
+| `graph` | Selective replanning, goal checks, state updates, events, approval checkpoints |
+| `situation` | Six scores, named evidence signals, pluggable assessment |
 | `constraints` | Step limit, capability allowlist, approval, custom hard rules |
 
 [Architecture](docs/architecture.md) ·
 [API reference](docs/api.md) · [Release guide](docs/releasing.md)
 
-The proposed [0.2.0 improvement plan](docs/plans/v0.2.0-research.md) focuses on
-evidence-driven research, selective replanning, explicit stopping criteria, and
-an offline benchmark with an optional online demonstration. These changes are
-planned; the current release is 0.1.0.
+Version 0.2.0 implements the [research improvement plan](docs/plans/v0.2.0-research.md).
+Read the [research guide](docs/research.md) for evidence rules, benchmark methods,
+and the optional online demonstration.
+
+## 🔎 Research and retrieval
+
+Run the conflict example and the frozen offline comparison:
+
+```bash
+python examples/adaptive_research.py --trace research-trace.jsonl
+python benchmarks/run.py --split evaluation --output benchmark-results
+```
+
+The example inserts a conflict review, retrieves an authoritative source, verifies
+claims and citations, and returns a supported answer. When evidence remains
+insufficient, it returns explicit unresolved keys within a four-read budget.
+Known copies are skipped; copies discovered during extraction do not count as
+independent sources.
+
+Measured on 36 project-authored, frozen evaluation cases:
+
+| Mode | Correct outcomes | Planner calls | Retrieval attempts |
+| --- | --- | --- | --- |
+| Fixed workflow | 36/36 | 36 | 105 |
+| Always replan | 36/36 | 225 | 105 |
+| Selective replan | 36/36 | 138 | 105 |
+
+Selective replanning reduced planner calls by **38.7% against always replanning**.
+The fixed workflow was cheaper on these predictable cases. Retrieval counts were
+unchanged. These structured scenarios test control behavior; they do not measure
+web-search quality, arbitrary language entailment, model cost, or production
+performance. See the [full report](benchmarks/results/evaluation.md) and
+[methodology](docs/research.md).
+
+Opt into a real read-only HTTPS demonstration, then replay captured evidence:
+
+```bash
+python examples/online_research.py --online --capture replay
+python examples/online_research.py --replay replay
+```
+
+The default uses pinned DAOGraph documentation and a narrow extractor; no model
+provider or API key is required. Online runs are separate from the offline gates.
 
 ## 🚀 Install and run
 
@@ -55,7 +95,53 @@ ruff format --check .
 mypy
 python -m build
 python -m twine check dist/*
+python benchmarks/run.py --split evaluation --output benchmark-results
 ```
+
+## 🧭 Selective control
+
+The host supplies a relevance decision and a goal check. Both callbacks can be
+synchronous or asynchronous:
+
+```python
+from daograph import DAOGraph, GoalCheck, Node, Plan, ReplanDecision
+
+
+def adapt(context, previous_situation, current_plan):
+    return ReplanDecision(
+        required=bool(context.state.get("new_evidence")),
+        reason="Replan only when relevant evidence changes",
+    )
+
+
+def verify_goal(context):
+    return GoalCheck(
+        satisfied=bool(context.state.get("answer_verified")),
+        reason="The host checks whether the required outcome is verified",
+    )
+
+
+graph = DAOGraph(
+    goal="Produce a verified answer",
+    nodes=(
+        Node("observe", lambda context: {"new_evidence": False}),
+        Node("answer", lambda context: {"answer_verified": True}),
+    ),
+    planner=lambda context: Plan.chain("observe", "answer"),
+    adapt=adapt,
+    verify_goal=verify_goal,
+)
+assert graph.invoke({}).status == "completed"
+```
+
+The first and exhausted plans always invoke the planner. Reused plans still pass
+validation and every action still passes constraints. A satisfied goal check can
+stop pending work. An exhausted newly composed plan with an unsatisfied goal
+returns `incomplete`.
+
+`adapt=None` keeps planning after every assessment; `verify_goal=None` keeps the
+0.1.0 completion semantics. Approval resume executes the exact approved pending
+action before these optional controls run again.
 
 ## 🎯 A small working agent
 
@@ -113,30 +199,32 @@ also be async and model-backed; the core does not depend on a model provider.
 ## 🔄 The control loop
 
 ```mermaid
-flowchart LR
+flowchart TD
     accTitle: DAOGraph adaptive control loop
-    accDescr: Host-defined goals and constraints govern a loop that assesses facts, composes a transient DAG, checks one action, executes it, and observes feedback.
+    accDescr: Host-defined goal verification and adaptation guide transient plans. Every action passes execution constraints before it commits a state update.
 
-    goal["Host goal"] --> plan["Compose current DAG"]
-    facts["Observe facts"] --> situation["Assess situation"]
-    situation --> plan
-    plan --> gate{"Check constraints"}
-    constraints["Host boundaries"] --> gate
-    gate -->|Allow| action["Execute one task"]
-    gate -->|Pause| approval["Host approval"]
-    approval -->|Recheck| gate
+    assess["Assess current facts"] --> verify{"Goal satisfied?"}
+    verify -->|Yes| complete(["Complete run"])
+    verify -->|No or no verifier| adapt{"New plan required?"}
+    adapt -->|Yes| compose["Compose and validate DAG"]
+    adapt -->|No| reuse["Validate retained DAG"]
+    compose --> gate{"Check next action constraints"}
+    reuse --> gate
+    gate -->|Allow| execute["Execute and commit one task"]
+    gate -->|Pause| approval["Host approval for exact task"]
+    approval -->|Reassess and recheck| gate
     gate -->|Block| stop(["Stop run"])
-    action --> facts
+    execute --> assess
 ```
 
-An assessment happens before the first task and after every successful task. The
-planner is rerun after each assessment. The runtime takes the first ready task in
-plan order, commits its update, and discards the unfinished plan before composing
-again. Completed task ids prevent unintentional replay during replanning.
+Assessment happens before the first task and after every successful task. By
+default, planning follows each assessment. Optional adaptation can retain an
+unfinished plan. The runtime executes the first ready task in plan order and
+commits its update atomically. Completed task ids prevent accidental replay.
 
-DAG roots are executed sequentially in 0.1.0. Fan-in dependencies are supported;
-parallel execution within one run is outside this release. Independent async runs
-can execute concurrently.
+DAG roots are sequential in 0.2.0. Fan-in dependencies are supported; parallel
+execution within one run is outside this release. Independent async runs can
+execute concurrently.
 
 ## 📊 Situation
 
@@ -154,6 +242,11 @@ an assessment. The default engine reads the complete `state["signals"]` mapping;
 missing fields use the defaults above. It does not infer risk from arbitrary text.
 Supply a domain assessor to interpret facts and history. Scores and label
 thresholds are explicit estimates, without a claim of statistical calibration.
+
+Optional `Situation.signals` contains named `Signal(name, value, evidence)`
+records. Values are finite numbers in `[0, 1]` or `None` for unknown. The research
+application reports coverage, conflict, independent support, freshness, and new
+information; they are application heuristics, not calibrated probabilities.
 
 The planner decides how each signal affects topology. The runtime does not assume
 that increasing urgency permits bypassing a constraint, or that increasing
@@ -226,9 +319,9 @@ validates. Node failures produce `Result(status="failed")` and are not retried.
 Cancellation propagates to the caller. Cancelling an await does not forcibly stop
 an already running synchronous callback thread.
 
-Terminal statuses are `completed`, `paused`, `blocked`, and `failed`.
-`completed` means the planner has no unfinished tasks; semantic goal verification
-belongs in your planner or verification node. A paused run includes a serializable
+Terminal statuses are `completed`, `paused`, `blocked`, `failed`, and the opt-in
+`incomplete`. With a verifier, `completed` means its goal check passed; without
+one, it retains the original no-unfinished-tasks meaning. A paused run includes a serializable
 approval checkpoint. Stream events expose state snapshots, plans, and situation
 assessments, so stream consumers should receive only data they are authorized to
 read.
@@ -238,13 +331,14 @@ read.
 LangGraph already supports conditional edges, dynamic routing through `Command`,
 and durable interrupt/resume mechanisms.[^1][^2] DAOGraph's distinction is its
 small default control contract: explicit situation assessment and reconstruction
-of the transient execution DAG after every observation. It is an independent
+or selective reuse of the transient execution DAG after observations, with
+optional host-defined goal checks. It is an independent
 implementation, with no LangGraph dependency and no API compatibility claim.
 
 This alpha release includes DAG validation, sync/async calls, incremental event
 streams, reducers, minimal constraints, and JSON approval checkpoints. Production
 crash recovery, exactly-once effects, distributed scheduling, automatic retries,
-intra-run parallelism, and a provider integration catalog are outside 0.1.0.
+intra-run parallelism, and a provider integration catalog are outside 0.2.0.
 
 ## 🤝 Contributing and license
 

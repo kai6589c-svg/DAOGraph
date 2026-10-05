@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "daograph"
-version = "0.1.0"
-description = "Situation-driven adaptive agent graphs with minimal constraints"
+version = "0.2.0"
+description = "Evidence-driven adaptive agent graphs with explicit goals and minimal constraints"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
@@ -38,7 +38,7 @@ core-metadata-version = "2.4"
 
 [tool.hatch.build.targets.sdist]
 core-metadata-version = "2.4"
-include = ["src", "tests", "examples", "docs", ".github", ".gitignore", "README.md", "LICENSE", "CHANGELOG.md", "CONTRIBUTING.md", "pyproject.toml"]
+include = ["src", "tests", "examples", "benchmarks", "docs", ".github", ".gitignore", "README.md", "LICENSE", "CHANGELOG.md", "CONTRIBUTING.md", "pyproject.toml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

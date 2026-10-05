@@ -1,0 +1,58 @@
+{
+  "id": "unavailable-03",
+  "family": "unavailable",
+  "split": "evaluation",
+  "task": {
+    "question": "What is the current release limit for Service Unavailable 3?",
+    "required_keys": [
+      "release_limit"
+    ],
+    "effective_date": "2026-01-01"
+  },
+  "sources": [
+    {
+      "id": "s01",
+      "origin": "publisher-1",
+      "url": "fixture://unavailable-03/s01",
+      "title": "What is the current release limit for Service Unavailable 3?",
+      "date": "2026-10-01",
+      "authoritative": false,
+      "duplicate_of": null
+    },
+    {
+      "id": "s02",
+      "origin": "publisher-2",
+      "url": "fixture://unavailable-03/s02",
+      "title": "What is the current release limit for Service Unavailable 3?",
+      "date": "2026-10-01",
+      "authoritative": false,
+      "duplicate_of": null
+    },
+    {
+      "id": "s03",
+      "origin": "publisher-3",
+      "url": "fixture://unavailable-03/s03",
+      "title": "What is the current release limit for Service Unavailable 3?",
+      "date": "2026-10-01",
+      "authoritative": true,
+      "duplicate_of": null
+    }
+  ],
+  "documents": {
+    "s01": {
+      "failure": "timeout"
+    },
+    "s02": {
+      "failure": "empty"
+    },
+    "s03": {
+      "claims": [
+        {
+          "key": "release_limit",
+          "value": "12",
+          "excerpt": "The release limit is 12."
+        }
+      ]
+    }
+  }
+}

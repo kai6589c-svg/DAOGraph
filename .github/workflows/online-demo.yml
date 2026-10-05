@@ -1,0 +1,38 @@
+name: Optional online research demo
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: 'Pinned DAOGraph documentation revision'
+        required: true
+        default: 'v0.1.0'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  online:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -e .
+      - name: Capture read-only online evidence
+        env:
+          SOURCE_REF: ${{ inputs.source_ref }}
+        run: python examples/online_research.py --online --ref "$SOURCE_REF" --capture online-results/responses --trace online-results/online.jsonl
+      - name: Replay without network access
+        env:
+          SOURCE_REF: ${{ inputs.source_ref }}
+        run: python examples/online_research.py --replay online-results/responses --ref "$SOURCE_REF" --trace online-results/replay.jsonl
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: daograph-online-demo
+          path: online-results/

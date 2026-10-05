@@ -19,13 +19,14 @@ On Windows, activate with `.venv\Scripts\activate`.
 ## ✅ Required checks
 
 ```bash
-pytest --cov=daograph --cov-report=term-missing --cov-fail-under=85
+pytest --cov=daograph --cov-report=term-missing --cov-fail-under=90
 ruff check .
 ruff format --check .
 mypy
 python examples/adaptive_research.py
 python examples/approval.py
 python examples/async_tools.py
+python benchmarks/run.py --split evaluation --output benchmark-results
 python -m build
 python -m twine check dist/*
 ```
@@ -46,3 +47,7 @@ public interface changes.
 
 Submit pull requests from a branch with the problem, changed behavior, and
 validation. The public API is still alpha and may change before 1.0.
+
+Do not retune on frozen evaluation cases or relabel them after inspecting results.
+The offline runner denies network operations. Online demonstrations are manual
+and never determine the offline release gate. See [the research guide](docs/research.md).

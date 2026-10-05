@@ -10,6 +10,38 @@ from typing import Any
 
 
 @dataclass(frozen=True)
+class Signal:
+    """An application-defined normalized observation; None means unknown."""
+
+    name: str
+    value: float | None
+    evidence: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        if (
+            not isinstance(self.name, str)
+            or not self.name.isascii()
+            or not self.name.isidentifier()
+        ):
+            raise ValueError("Signal name must be an English identifier")
+        if self.value is not None:
+            if (
+                isinstance(self.value, bool)
+                or not isinstance(self.value, Real)
+                or not math.isfinite(self.value)
+                or not 0 <= self.value <= 1
+            ):
+                raise ValueError("Signal value must be None or a finite number in [0, 1]")
+            object.__setattr__(self, "value", float(self.value))
+        if isinstance(self.evidence, str) or any(not isinstance(x, str) for x in self.evidence):
+            raise ValueError("Signal evidence must be a sequence of strings")
+        object.__setattr__(self, "evidence", tuple(self.evidence))
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"name": self.name, "value": self.value, "evidence": list(self.evidence)}
+
+
+@dataclass(frozen=True)
 class Situation:
     """Normalized signals. Scores are application estimates, not probabilities."""
 
@@ -20,10 +52,11 @@ class Situation:
     resource_pressure: float = 0.0
     trust: float = 0.5
     evidence: tuple[str, ...] = ()
+    signals: tuple[Signal, ...] = ()
 
     def __post_init__(self) -> None:
         for field in fields(self):
-            if field.name == "evidence":
+            if field.name in ("evidence", "signals"):
                 continue
             value = getattr(self, field.name)
             if isinstance(value, bool) or not isinstance(value, Real):
@@ -36,6 +69,12 @@ class Situation:
         ):
             raise ValueError("evidence must be a sequence of strings")
         object.__setattr__(self, "evidence", tuple(self.evidence))
+
+        object.__setattr__(self, "signals", tuple(self.signals))
+        if not all(isinstance(signal, Signal) for signal in self.signals):
+            raise TypeError("signals must contain Signal records")
+        if len({signal.name for signal in self.signals}) != len(self.signals):
+            raise ValueError("Signal names must be unique")
 
     @property
     def labels(self) -> tuple[str, ...]:
@@ -51,16 +90,22 @@ class Situation:
         return tuple(label for active, label in values if active) or ("stable",)
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            field.name: list(self.evidence)
-            if field.name == "evidence"
-            else getattr(self, field.name)
+        data = {
+            field.name: getattr(self, field.name)
             for field in fields(self)
+            if field.name not in ("evidence", "signals")
         }
+        data["evidence"] = list(self.evidence)
+        if self.signals:
+            data["signals"] = [signal.to_dict() for signal in self.signals]
+        return data
 
     @classmethod
     def from_dict(cls, value: Mapping[str, Any]) -> Situation:
-        return cls(**dict(value))
+        data = dict(value)
+        if "signals" in data:
+            data["signals"] = tuple(Signal(**signal) for signal in data["signals"])
+        return cls(**data)
 
 
 Assessor = Callable[[Mapping[str, Any], Situation | None], Situation | Awaitable[Situation]]

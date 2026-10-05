@@ -1,0 +1,70 @@
+{
+  "id": "stale-01",
+  "family": "stale",
+  "split": "development",
+  "task": {
+    "question": "What is the current release limit for Service Stale 1?",
+    "required_keys": [
+      "release_limit"
+    ],
+    "effective_date": "2026-01-01"
+  },
+  "sources": [
+    {
+      "id": "s01",
+      "origin": "publisher-1",
+      "url": "fixture://stale-01/s01",
+      "title": "What is the current release limit for Service Stale 1?",
+      "date": "2024-01-01",
+      "authoritative": false,
+      "duplicate_of": null
+    },
+    {
+      "id": "s02",
+      "origin": "publisher-2",
+      "url": "fixture://stale-01/s02",
+      "title": "What is the current release limit for Service Stale 1?",
+      "date": "2024-02-01",
+      "authoritative": false,
+      "duplicate_of": null
+    },
+    {
+      "id": "s03",
+      "origin": "publisher-3",
+      "url": "fixture://stale-01/s03",
+      "title": "What is the current release limit for Service Stale 1?",
+      "date": "2026-10-01",
+      "authoritative": true,
+      "duplicate_of": null
+    }
+  ],
+  "documents": {
+    "s01": {
+      "claims": [
+        {
+          "key": "release_limit",
+          "value": "20",
+          "excerpt": "The release limit is 20."
+        }
+      ]
+    },
+    "s02": {
+      "claims": [
+        {
+          "key": "release_limit",
+          "value": "20",
+          "excerpt": "The release limit is 20."
+        }
+      ]
+    },
+    "s03": {
+      "claims": [
+        {
+          "key": "release_limit",
+          "value": "10",
+          "excerpt": "The release limit is 10."
+        }
+      ]
+    }
+  }
+}
