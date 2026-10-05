@@ -1,0 +1,70 @@
+{
+  "id": "conflict-05",
+  "family": "conflict",
+  "split": "evaluation",
+  "task": {
+    "question": "What is the current release limit for Service Conflict 5?",
+    "required_keys": [
+      "release_limit"
+    ],
+    "effective_date": "2026-01-01"
+  },
+  "sources": [
+    {
+      "id": "s01",
+      "origin": "publisher-1",
+      "url": "fixture://conflict-05/s01",
+      "title": "What is the current release limit for Service Conflict 5?",
+      "date": "2026-10-01",
+      "authoritative": false,
+      "duplicate_of": null
+    },
+    {
+      "id": "s02",
+      "origin": "publisher-2",
+      "url": "fixture://conflict-05/s02",
+      "title": "What is the current release limit for Service Conflict 5?",
+      "date": "2026-10-01",
+      "authoritative": false,
+      "duplicate_of": null
+    },
+    {
+      "id": "s03",
+      "origin": "publisher-3",
+      "url": "fixture://conflict-05/s03",
+      "title": "What is the current release limit for Service Conflict 5?",
+      "date": "2026-10-01",
+      "authoritative": true,
+      "duplicate_of": null
+    }
+  ],
+  "documents": {
+    "s01": {
+      "claims": [
+        {
+          "key": "release_limit",
+          "value": "24",
+          "excerpt": "The release limit is 24."
+        }
+      ]
+    },
+    "s02": {
+      "claims": [
+        {
+          "key": "release_limit",
+          "value": "34",
+          "excerpt": "The release limit is 34."
+        }
+      ]
+    },
+    "s03": {
+      "claims": [
+        {
+          "key": "release_limit",
+          "value": "14",
+          "excerpt": "The release limit is 14."
+        }
+      ]
+    }
+  }
+}

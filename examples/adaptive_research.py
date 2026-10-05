@@ -1,56 +1,56 @@
-"""A new observation inserts verification into the unfinished execution graph."""
+"""Offline research example: a conflict inserts verification and changes the plan."""
 
-from daograph import Context, DAOGraph, Node, Plan, Situation, SituationEngine
+import argparse
+import json
+from pathlib import Path
 
-
-def assess(state, previous):
-    uncertain = bool(state.get("conflicting_sources")) and not state.get("verified")
-    return Situation(
-        risk=0.1,
-        uncertainty=0.85 if uncertain else 0.15,
-        trust=0.4 if uncertain else 0.9,
-        evidence=("Sources disagree" if uncertain else "Evidence is consistent",),
-    )
-
-
-def research(context: Context):
-    # Replace these deterministic observations with your search tool.
-    return {"sources": ["Source A: 12", "Source B: 21"], "conflicting_sources": True}
-
-
-def verify(context: Context):
-    return {"verified": True, "resolved_value": 12}
-
-
-def answer(context: Context):
-    return {"answer": f"Verified value: {context.state.get('resolved_value', 'unknown')}"}
-
-
-def plan(context: Context):
-    if context.state.get("answer"):
-        return Plan(reason="Answer delivered")
-    if context.situation.uncertainty >= 0.6:
-        return Plan.chain("research", "verify", "answer", reason="Insert verification")
-    if context.state.get("verified"):
-        # Preserve the completed answer's future dependency when rebuilding.
-        return Plan.chain("research", "verify", "answer", reason="Evidence resolved")
-    return Plan.chain("research", "answer", reason="Start with the short path")
+from research import Research, Source, Task, plain, write_trace
 
 
 def build_graph():
-    return DAOGraph(
-        goal="Answer the question using consistent evidence",
-        nodes=(Node("research", research), Node("verify", verify), Node("answer", answer)),
-        planner=plan,
-        situation=SituationEngine(assess),
+    question = "What is the current service release limit?"
+    sources = (
+        Source("s01", "publisher-one", "fixture://one", question, "2026-10-01"),
+        Source("s02", "publisher-two", "fixture://two", question, "2026-10-01"),
+        Source("s03", "service-owner", "fixture://official", question, "2026-10-01", True),
     )
+    values = {"s01": "12", "s02": "21", "s03": "12"}
+
+    def read(source):
+        value = values[source.id]
+        return {
+            "claims": [
+                {
+                    "key": "release_limit",
+                    "value": value,
+                    "excerpt": f"The release limit is {value}.",
+                }
+            ]
+        }
+
+    application = Research(Task(question, ("release_limit",), "2026-01-01"), sources, read)
+    return application.graph()
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--trace", type=Path)
+    args = parser.parse_args()
+    events = list(build_graph().stream({"evidence": [], "attempts": []}))
+    for event in events:
+        if event.kind in ("plan", "plan_reused"):
+            print(f"{event.kind}: {[step.id for step in event.plan.steps]} — {event.message}")
+        if event.kind == "node_end":
+            print(f"executed: {event.step.id}")
+    result = events[-1].result
+    print(
+        json.dumps({"status": result.status, "answer": plain(result.state.get("answer"))}, indent=2)
+    )
+    if args.trace:
+        write_trace(events, args.trace)
+    if result.status != "completed":
+        raise SystemExit("Research example did not complete")
 
 
 if __name__ == "__main__":
-    for event in build_graph().stream({"question": "Which value is correct?"}):
-        if event.kind == "plan":
-            print(f"PLAN: {[step.id for step in event.plan.steps]} — {event.plan.reason}")
-        if event.kind == "node_end":
-            print(f"EXECUTED: {event.step.id}")
-        if event.result:
-            print(f"RESULT: {event.result.status}; {dict(event.result.state)}")
+    main()

@@ -1,0 +1,4 @@
+# Preserve byte-level corpus hashes across checkout platforms.
+* text=auto eol=lf
+*.json text eol=lf
+*.jsonl text eol=lf

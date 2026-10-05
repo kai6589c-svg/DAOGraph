@@ -194,6 +194,53 @@ Reducer = Callable[[Any, Any], Any]
 
 
 @dataclass(frozen=True)
+class ReplanDecision:
+    """Whether changed observations warrant a new unfinished plan."""
+
+    required: bool
+    reason: str
+
+    def __post_init__(self) -> None:
+        if type(self.required) is not bool or not isinstance(self.reason, str):
+            raise TypeError("ReplanDecision requires a boolean and a string reason")
+
+
+@dataclass(frozen=True)
+class GoalCheck:
+    """A host-defined check of the outcome, independent of plan exhaustion."""
+
+    satisfied: bool
+    reason: str
+
+    def __post_init__(self) -> None:
+        if type(self.satisfied) is not bool or not isinstance(self.reason, str):
+            raise TypeError("GoalCheck requires a boolean and a string reason")
+
+
+@dataclass(frozen=True)
+class PlanChange:
+    """Stable unfinished-task differences; completed history is excluded."""
+
+    added: tuple[str, ...] = ()
+    removed: tuple[str, ...] = ()
+    changed: tuple[str, ...] = ()
+
+    @classmethod
+    def between(cls, previous: Plan, current: Plan, completed: tuple[str, ...]) -> PlanChange:
+        old = {s.id: s for s in previous.steps if s.id not in completed}
+        new = {s.id: s for s in current.steps if s.id not in completed}
+        return cls(
+            tuple(sorted(new.keys() - old.keys())),
+            tuple(sorted(old.keys() - new.keys())),
+            tuple(sorted(key for key in old.keys() & new.keys() if old[key] != new[key])),
+        )
+
+
+Adapter = Callable[[Context, Situation | None, Plan], ReplanDecision | Awaitable[ReplanDecision]]
+GoalVerifier = Callable[[Context], GoalCheck | Awaitable[GoalCheck]]
+
+
+@dataclass(frozen=True)
 class Node:
     name: str
     action: Action
@@ -270,13 +317,14 @@ class Checkpoint:
 
 @dataclass(frozen=True)
 class Result:
-    status: Literal["completed", "paused", "blocked", "failed"]
+    status: Literal["completed", "paused", "blocked", "failed", "incomplete"]
     state: Mapping[str, Any]
     situation: Situation
     history: tuple[Step, ...]
     plan: Plan
     reason: str = ""
     checkpoint: Checkpoint | None = None
+    goal_check: GoalCheck | None = None
 
     @property
     def completed(self) -> tuple[str, ...]:
@@ -291,11 +339,14 @@ class Event:
     step: Step | None = None
     message: str = ""
     result: Result | None = None
+    adaptation: ReplanDecision | None = None
+    goal_check: GoalCheck | None = None
+    plan_change: PlanChange | None = None
 
 
 @dataclass(frozen=True)
 class DAOGraph:
-    """Declare capabilities and a planner; recompute the graph after every action.
+    """Declare capabilities and adapt unfinished work as observations change.
 
     Callbacks and checkpoints are trusted host code/data. This is orchestration,
     not a Python sandbox or a distributed exactly-once execution service.
@@ -308,6 +359,8 @@ class DAOGraph:
     constraints: Constraints = field(default_factory=Constraints)
     reducers: Mapping[str, Reducer] = field(default_factory=dict)
     revision: str = "1"
+    adapt: Adapter | None = None
+    verify_goal: GoalVerifier | None = None
     _registry: Mapping[str, Node] = field(init=False, repr=False)
     _signature: str = field(init=False, repr=False)
 
@@ -324,6 +377,10 @@ class DAOGraph:
             raise ValueError("Duplicate registered node name")
         if not callable(self.planner):
             raise TypeError("planner must be callable")
+        for name in ("adapt", "verify_goal"):
+            callback = getattr(self, name)
+            if callback is not None and not callable(callback):
+                raise TypeError(f"{name} must be callable or None")
         if not isinstance(self.constraints, Constraints):
             raise TypeError("constraints must be Constraints")
         if not isinstance(self.situation, SituationEngine):
@@ -359,6 +416,11 @@ class DAOGraph:
             ],
             "reducers": {key: _call_name(fn) for key, fn in self.reducers.items()},
         }
+        # Preserve the exact 0.1.0 definition when optional controls are absent.
+        for name in ("adapt", "verify_goal"):
+            callback = getattr(self, name)
+            if callback is not None:
+                definition[name] = _call_name(callback)
         signature = hashlib.sha256(json.dumps(definition, sort_keys=True).encode()).hexdigest()
         object.__setattr__(self, "_signature", signature)
 
@@ -374,20 +436,75 @@ class DAOGraph:
         plan = checkpoint.plan if checkpoint else Plan()
         pending = checkpoint.interrupt.step if checkpoint else None
         previous = checkpoint.situation if checkpoint else None
+        planned = checkpoint is not None
+        goal_check: GoalCheck | None = None
         try:
             while True:
                 snapshot = _snapshot(facts)
-                current = await _call(self.situation.assess, snapshot, previous)
-                if not isinstance(current, Situation):
+                assessed = await _call(self.situation.assess, snapshot, previous)
+                if not isinstance(assessed, Situation):
                     raise TypeError("Assessor must return a Situation")
+                current = assessed
                 context = Context(self.goal, snapshot, current, history)
                 yield Event("situation", context, plan)
                 if pending is None:
-                    plan = await _call(self.planner, context)
-                    if not isinstance(plan, Plan):
-                        raise TypeError("Planner must return a Plan")
-                plan.validate(self._registry, history)
-                yield Event("plan", context, plan, message=plan.reason)
+                    if self.verify_goal is not None:
+                        checked = await _call(self.verify_goal, context)
+                        if not isinstance(checked, GoalCheck):
+                            raise TypeError("Goal verifier must return a GoalCheck")
+                        goal_check = checked
+                        yield Event("goal_check", context, plan, goal_check=goal_check)
+                        if goal_check.satisfied:
+                            result = Result(
+                                "completed",
+                                snapshot,
+                                current,
+                                history,
+                                plan,
+                                goal_check.reason,
+                                goal_check=goal_check,
+                            )
+                            yield Event("completed", context, plan, result=result)
+                            return
+                    exhausted = not any(s.id not in context.completed for s in plan.steps)
+                    if not planned or exhausted:
+                        adaptation = ReplanDecision(True, "Initial or exhausted plan")
+                    elif self.adapt is None:
+                        adaptation = ReplanDecision(True, "Default assessment replanning")
+                    else:
+                        adaptation = await _call(self.adapt, context, previous, plan)
+                        if not isinstance(adaptation, ReplanDecision):
+                            raise TypeError("Adapter must return a ReplanDecision")
+                    if self.adapt is not None:
+                        yield Event(
+                            "adaptation",
+                            context,
+                            plan,
+                            message=adaptation.reason,
+                            adaptation=adaptation,
+                        )
+                    if adaptation.required:
+                        old_plan = plan
+                        proposed = await _call(self.planner, context)
+                        if not isinstance(proposed, Plan):
+                            raise TypeError("Planner must return a Plan")
+                        plan = proposed
+                        plan.validate(self._registry, history)
+                        planned = True
+                        yield Event(
+                            "plan",
+                            context,
+                            plan,
+                            message=plan.reason,
+                            plan_change=PlanChange.between(old_plan, plan, context.completed),
+                        )
+                    else:
+                        plan.validate(self._registry, history)
+                        yield Event("plan_reused", context, plan, message=adaptation.reason)
+                else:
+                    # An approval authorizes this exact pending action, not a new plan.
+                    plan.validate(self._registry, history)
+                    yield Event("plan", context, plan, message=plan.reason)
                 ready = plan.ready(context.completed)
                 if pending is not None:
                     if pending not in ready:
@@ -398,13 +515,32 @@ class DAOGraph:
                 else:
                     if any(step.id not in context.completed for step in plan.steps):
                         raise ValueError("Plan has unfinished tasks but no ready task")
-                    result = Result("completed", snapshot, current, history, plan, plan.reason)
-                    yield Event("completed", context, plan, result=result)
+                    status: Literal["incomplete", "completed"] = (
+                        "incomplete" if goal_check is not None else "completed"
+                    )
+                    result = Result(
+                        status,
+                        snapshot,
+                        current,
+                        history,
+                        plan,
+                        goal_check.reason if goal_check else plan.reason,
+                        goal_check=goal_check,
+                    )
+                    yield Event(status, context, plan, result=result)
                     return
                 node = self._registry[step.node]
                 decision = await _call(self.constraints.check, context, node)
                 if decision.kind == "block":
-                    result = Result("blocked", snapshot, current, history, plan, decision.reason)
+                    result = Result(
+                        "blocked",
+                        snapshot,
+                        current,
+                        history,
+                        plan,
+                        decision.reason,
+                        goal_check=goal_check,
+                    )
                     yield Event("blocked", context, plan, step, decision.reason, result)
                     return
                 granted = (
@@ -417,7 +553,14 @@ class DAOGraph:
                     interrupt = Interrupt(uuid.uuid4().hex, step, decision.reason)
                     saved = Checkpoint(self._signature, snapshot, current, history, plan, interrupt)
                     result = Result(
-                        "paused", snapshot, current, history, plan, decision.reason, saved
+                        "paused",
+                        snapshot,
+                        current,
+                        history,
+                        plan,
+                        decision.reason,
+                        saved,
+                        goal_check,
                     )
                     yield Event("paused", context, plan, step, decision.reason, result)
                     return
@@ -444,7 +587,9 @@ class DAOGraph:
         except Exception as error:
             context = Context(self.goal, _snapshot(facts), current, history)
             reason = f"{type(error).__name__}: {error}"
-            result = Result("failed", context.state, current, history, plan, reason)
+            result = Result(
+                "failed", context.state, current, history, plan, reason, goal_check=goal_check
+            )
             yield Event("failed", context, plan, message=reason, result=result)
 
     async def astream(self, state: Mapping[str, Any]) -> AsyncGenerator[Event, None]:

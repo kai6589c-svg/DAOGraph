@@ -1,0 +1,88 @@
+{
+  "id": "insufficient-03",
+  "family": "insufficient",
+  "split": "evaluation",
+  "task": {
+    "question": "What is the current release limit for Service Insufficient 3?",
+    "required_keys": [
+      "release_limit"
+    ],
+    "effective_date": "2026-01-01"
+  },
+  "sources": [
+    {
+      "id": "s01",
+      "origin": "publisher-1",
+      "url": "fixture://insufficient-03/s01",
+      "title": "What is the current release limit for Service Insufficient 3?",
+      "date": "2026-10-01",
+      "authoritative": false,
+      "duplicate_of": null
+    },
+    {
+      "id": "s02",
+      "origin": "publisher-2",
+      "url": "fixture://insufficient-03/s02",
+      "title": "What is the current release limit for Service Insufficient 3?",
+      "date": "2026-10-01",
+      "authoritative": false,
+      "duplicate_of": null
+    },
+    {
+      "id": "s03",
+      "origin": "publisher-3",
+      "url": "fixture://insufficient-03/s03",
+      "title": "What is the current release limit for Service Insufficient 3?",
+      "date": "2026-10-01",
+      "authoritative": false,
+      "duplicate_of": null
+    },
+    {
+      "id": "s04",
+      "origin": "publisher-4",
+      "url": "fixture://insufficient-03/s04",
+      "title": "What is the current release limit for Service Insufficient 3?",
+      "date": "2026-10-01",
+      "authoritative": false,
+      "duplicate_of": null
+    }
+  ],
+  "documents": {
+    "s01": {
+      "claims": [
+        {
+          "key": "release_limit",
+          "value": "23",
+          "excerpt": "The release limit is 23."
+        }
+      ]
+    },
+    "s02": {
+      "claims": [
+        {
+          "key": "release_limit",
+          "value": "24",
+          "excerpt": "The release limit is 24."
+        }
+      ]
+    },
+    "s03": {
+      "claims": [
+        {
+          "key": "release_limit",
+          "value": "25",
+          "excerpt": "The release limit is 25."
+        }
+      ]
+    },
+    "s04": {
+      "claims": [
+        {
+          "key": "release_limit",
+          "value": "26",
+          "excerpt": "The release limit is 26."
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "id": "duplicates-02",
+  "family": "duplicates",
+  "split": "development",
+  "task": {
+    "question": "What is the current release limit for Service Duplicates 2?",
+    "required_keys": [
+      "release_limit"
+    ],
+    "effective_date": "2026-01-01"
+  },
+  "sources": [
+    {
+      "id": "s01",
+      "origin": "original",
+      "url": "fixture://duplicates-02/s01",
+      "title": "What is the current release limit for Service Duplicates 2?",
+      "date": "2026-10-01",
+      "authoritative": false,
+      "duplicate_of": null
+    },
+    {
+      "id": "s02",
+      "origin": "original",
+      "url": "fixture://duplicates-02/s02",
+      "title": "What is the current release limit for Service Duplicates 2?",
+      "date": "2026-10-01",
+      "authoritative": false,
+      "duplicate_of": null
+    },
+    {
+      "id": "s03",
+      "origin": "publisher-3",
+      "url": "fixture://duplicates-02/s03",
+      "title": "What is the current release limit for Service Duplicates 2?",
+      "date": "2026-10-01",
+      "authoritative": false,
+      "duplicate_of": null
+    }
+  ],
+  "documents": {
+    "s01": {
+      "claims": [
+        {
+          "key": "release_limit",
+          "value": "11",
+          "excerpt": "The release limit is 11."
+        }
+      ]
+    },
+    "s02": {
+      "claims": [
+        {
+          "key": "release_limit",
+          "value": "11",
+          "excerpt": "The release limit is 11."
+        }
+      ]
+    },
+    "s03": {
+      "claims": [
+        {
+          "key": "release_limit",
+          "value": "11",
+          "excerpt": "The release limit is 11."
+        }
+      ]
+    }
+  }
+}

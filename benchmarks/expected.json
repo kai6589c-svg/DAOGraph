@@ -1,0 +1,274 @@
+{
+  "conflict-01": {
+    "status": "supported",
+    "values": {
+      "release_limit": "10"
+    }
+  },
+  "conflict-02": {
+    "status": "supported",
+    "values": {
+      "release_limit": "11"
+    }
+  },
+  "conflict-03": {
+    "status": "supported",
+    "values": {
+      "release_limit": "12"
+    }
+  },
+  "conflict-04": {
+    "status": "supported",
+    "values": {
+      "release_limit": "13"
+    }
+  },
+  "conflict-05": {
+    "status": "supported",
+    "values": {
+      "release_limit": "14"
+    }
+  },
+  "conflict-06": {
+    "status": "supported",
+    "values": {
+      "release_limit": "15"
+    }
+  },
+  "conflict-07": {
+    "status": "supported",
+    "values": {
+      "release_limit": "16"
+    }
+  },
+  "conflict-08": {
+    "status": "supported",
+    "values": {
+      "release_limit": "17"
+    }
+  },
+  "consistent-01": {
+    "status": "supported",
+    "values": {
+      "release_limit": "10"
+    }
+  },
+  "consistent-02": {
+    "status": "supported",
+    "values": {
+      "release_limit": "11"
+    }
+  },
+  "consistent-03": {
+    "status": "supported",
+    "values": {
+      "release_limit": "12"
+    }
+  },
+  "consistent-04": {
+    "status": "supported",
+    "values": {
+      "release_limit": "13"
+    }
+  },
+  "consistent-05": {
+    "status": "supported",
+    "values": {
+      "release_limit": "14"
+    }
+  },
+  "consistent-06": {
+    "status": "supported",
+    "values": {
+      "release_limit": "15"
+    }
+  },
+  "consistent-07": {
+    "status": "supported",
+    "values": {
+      "release_limit": "16"
+    }
+  },
+  "consistent-08": {
+    "status": "supported",
+    "values": {
+      "release_limit": "17"
+    }
+  },
+  "duplicates-01": {
+    "status": "supported",
+    "values": {
+      "release_limit": "10"
+    }
+  },
+  "duplicates-02": {
+    "status": "supported",
+    "values": {
+      "release_limit": "11"
+    }
+  },
+  "duplicates-03": {
+    "status": "supported",
+    "values": {
+      "release_limit": "12"
+    }
+  },
+  "duplicates-04": {
+    "status": "supported",
+    "values": {
+      "release_limit": "13"
+    }
+  },
+  "duplicates-05": {
+    "status": "supported",
+    "values": {
+      "release_limit": "14"
+    }
+  },
+  "duplicates-06": {
+    "status": "supported",
+    "values": {
+      "release_limit": "15"
+    }
+  },
+  "duplicates-07": {
+    "status": "supported",
+    "values": {
+      "release_limit": "16"
+    }
+  },
+  "duplicates-08": {
+    "status": "supported",
+    "values": {
+      "release_limit": "17"
+    }
+  },
+  "insufficient-01": {
+    "status": "insufficient",
+    "values": {}
+  },
+  "insufficient-02": {
+    "status": "insufficient",
+    "values": {}
+  },
+  "insufficient-03": {
+    "status": "insufficient",
+    "values": {}
+  },
+  "insufficient-04": {
+    "status": "insufficient",
+    "values": {}
+  },
+  "insufficient-05": {
+    "status": "insufficient",
+    "values": {}
+  },
+  "insufficient-06": {
+    "status": "insufficient",
+    "values": {}
+  },
+  "insufficient-07": {
+    "status": "insufficient",
+    "values": {}
+  },
+  "insufficient-08": {
+    "status": "insufficient",
+    "values": {}
+  },
+  "stale-01": {
+    "status": "supported",
+    "values": {
+      "release_limit": "10"
+    }
+  },
+  "stale-02": {
+    "status": "supported",
+    "values": {
+      "release_limit": "11"
+    }
+  },
+  "stale-03": {
+    "status": "supported",
+    "values": {
+      "release_limit": "12"
+    }
+  },
+  "stale-04": {
+    "status": "supported",
+    "values": {
+      "release_limit": "13"
+    }
+  },
+  "stale-05": {
+    "status": "supported",
+    "values": {
+      "release_limit": "14"
+    }
+  },
+  "stale-06": {
+    "status": "supported",
+    "values": {
+      "release_limit": "15"
+    }
+  },
+  "stale-07": {
+    "status": "supported",
+    "values": {
+      "release_limit": "16"
+    }
+  },
+  "stale-08": {
+    "status": "supported",
+    "values": {
+      "release_limit": "17"
+    }
+  },
+  "unavailable-01": {
+    "status": "supported",
+    "values": {
+      "release_limit": "10"
+    }
+  },
+  "unavailable-02": {
+    "status": "supported",
+    "values": {
+      "release_limit": "11"
+    }
+  },
+  "unavailable-03": {
+    "status": "supported",
+    "values": {
+      "release_limit": "12"
+    }
+  },
+  "unavailable-04": {
+    "status": "supported",
+    "values": {
+      "release_limit": "13"
+    }
+  },
+  "unavailable-05": {
+    "status": "supported",
+    "values": {
+      "release_limit": "14"
+    }
+  },
+  "unavailable-06": {
+    "status": "supported",
+    "values": {
+      "release_limit": "15"
+    }
+  },
+  "unavailable-07": {
+    "status": "supported",
+    "values": {
+      "release_limit": "16"
+    }
+  },
+  "unavailable-08": {
+    "status": "supported",
+    "values": {
+      "release_limit": "17"
+    }
+  }
+}

@@ -6,7 +6,7 @@ _Public interfaces for the three-module core._
 
 ## 📋 Runtime configuration
 
-```python
+```text
 DAOGraph(
     goal: str,
     nodes: tuple[Node, ...],
@@ -15,6 +15,8 @@ DAOGraph(
     constraints: Constraints = Constraints(),
     reducers: Mapping[str, Callable] = {},
     revision: str = "1",
+    adapt: Adapter | None = None,
+    verify_goal: GoalVerifier | None = None,
 )
 ```
 
@@ -56,7 +58,8 @@ redefined, even if a later plan includes it again.
 
 `Plan(steps=(), reason="")` is a transient DAG. `Plan.chain("research", "answer")`
 creates steps with ids equal to node names and sequential dependencies.
-`Plan()` or a plan containing only completed ids ends a run.
+`Plan()` or a plan containing only completed ids ends a run when verification
+is absent; with an unsatisfied verifier it returns `incomplete`.
 
 ```python
 from daograph import Plan, Step
@@ -84,7 +87,7 @@ of successful `Step` occurrences. `steps` is its length; `completed` returns ids
 JSON arrays in `state` are immutable tuples, including nested arrays.
 
 `Situation(risk=0.0, uncertainty=0.5, urgency=0.0, reversibility=1.0,
-resource_pressure=0.0, trust=0.5, evidence=())` validates finite scores in `[0, 1]`.
+resource_pressure=0.0, trust=0.5, evidence=(), signals=())` validates finite scores in `[0, 1]`.
 `labels` applies these convenience thresholds:
 
 | Label | Threshold |
@@ -104,6 +107,45 @@ change the constraints. `to_dict()` and `from_dict(data)` serialize a situation.
 `assess(state, previous) -> Situation | Awaitable[Situation]`. `previous` is `None`
 before the first action. The default assessor reads `state["signals"]`; missing
 fields use defaults rather than persisting previous values.
+
+## 🧭 Adaptation and goal checks
+
+`ReplanDecision(required: bool, reason: str)` and
+`GoalCheck(satisfied: bool, reason: str)` are frozen validated records. Boolean
+fields require actual booleans; reasons require strings.
+
+- `adapt(context, previous_situation, current_plan)` returns a `ReplanDecision`,
+  synchronously or asynchronously. It runs after successful tasks when unfinished
+  work remains. `previous_situation` is the assessment before the last committed
+  task; `current_plan` is the previously validated plan. Initial and exhausted
+  plans force planning without calling the adapter. `None` plans every assessment.
+- `verify_goal(context)` returns a `GoalCheck`, synchronously or asynchronously,
+  after assessment and before selecting ordinary work. Satisfaction stops without
+  dispatching pending tasks. An empty newly composed plan with an unsatisfied
+  check returns `incomplete`. `None` retains original completion semantics.
+
+Reused plans undergo validation and all selected actions pass constraints.
+Invalid callback outputs return `failed` before dispatch. New optional fields
+are appended after existing configuration fields, preserving positional arguments.
+
+`Signal(name, value, evidence=())` is a frozen record with an English identifier,
+a normalized finite number or `None`, and string evidence references. Situation
+signal names must be unique. `Situation.to_dict()` includes named signals only
+when present. `Situation.from_dict()` accepts old payloads without that field.
+This is separate from the default assessor's `state["signals"]` mapping, which
+contains the entire serialized situation.
+
+```python
+from daograph import Signal, Situation
+
+observation = Situation(
+    signals=(
+        Signal("coverage", 0.5, ("source:one",)),
+        Signal("freshness", None, ("No publication date available",)),
+    )
+)
+assert Situation.from_dict(observation.to_dict()) == observation
+```
 
 ## 🛡️ Constraints
 
@@ -142,7 +184,7 @@ A grant never overrides a hard block.
 ## 💾 Results and approval checkpoints
 
 `Result` contains `status`, a read-only `state`, `situation`, successful `history`,
-last `plan`, `reason`, and an optional `checkpoint`. `completed` is a tuple of
+last `plan`, `reason`, optional `checkpoint`, and optional `goal_check`. `completed` is a tuple of
 successful task ids. A pause checkpoint contains an `Interrupt` with `id`, `step`,
 and `reason`. The id identifies one pending approval request.
 
@@ -154,6 +196,12 @@ from daograph import Checkpoint
 # Path("run.checkpoint.json").write_text(result.checkpoint.to_json(), encoding="utf-8")
 # restored = Checkpoint.from_json(Path("run.checkpoint.json").read_text(encoding="utf-8"))
 ```
+
+Resume executes the exact pending task before running adaptation or goal
+verification again. The signature includes optional callback identities only
+when present. With both absent, its construction remains identical to 0.1.0;
+old default checkpoints remain compatible with the same host callbacks and revision.
+Callback names are not code hashes: bump `revision` after behavior changes.
 
 The JSON schema version is `1`. Data includes execution facts and evidence; avoid
 placing credentials in state. Checkpoints are not signed. An approval id is not
@@ -169,14 +217,22 @@ replaying the same checkpoint can replay its external effect.
 | `plan` | Validated transient plan |
 | `node_start` | Action about to execute |
 | `node_end` | Update committed |
-| `completed` | No unfinished tasks |
+| `completed` | Goal verified, or no unfinished tasks when no verifier is configured |
+| `adaptation` | Required/reuse decision, including forced planning |
+| `plan_reused` | Validated unfinished plan retained |
+| `goal_check` | Host verifier result |
+| `incomplete` | Newly composed plan exhausted while goal remains unsatisfied |
 | `paused` | Host approval needed |
 | `blocked` | Hard boundary denied execution |
 | `failed` | Callback or validation error |
 
 Each `Event` carries `context`, `plan`, optional `step`, `message`, and optional
-terminal `result`. The plan attached to a `situation` event is the previous plan;
-the following `plan` event carries the newly composed plan. Closing a stream
+terminal `result`. Optional typed `adaptation`, `goal_check`, and `plan_change`
+fields carry control details. `PlanChange(added, removed, changed)` describes
+sorted unfinished step ids on validated `plan` events; completed tasks are excluded.
+Changing a completed task remains an error. Reuse has no change record.
+The plan attached to a `situation` event is the previous plan;
+a `plan` event carries the newly composed plan, and `plan_reused` retains it. Closing a stream
 before consuming `node_start` does not run its task. Closing immediately after
 receiving `node_start` also does not run it; advancing the iterator starts the
 callback. State is committed before emitting `node_end`.

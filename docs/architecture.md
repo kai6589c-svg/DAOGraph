@@ -1,6 +1,6 @@
 # DAOGraph architecture
 
-_The control contract and implementation boundaries for version 0.1.0._
+_The control contract and implementation boundaries for version 0.2.0._
 
 ---
 
@@ -24,10 +24,14 @@ flowchart TD
     accDescr: The runtime assesses a facts snapshot, validates a proposed plan, selects a ready task, checks constraints, and atomically commits the task update before repeating.
 
     snapshot["Snapshot facts"] --> assess["Assess situation"]
-    assess --> compose["Compose current DAG"]
+    assess --> verify{"Goal satisfied?"}
+    verify -->|Yes| complete
+    verify -->|No or absent| adapt{"Replan required?"}
+    adapt -->|Yes| compose["Compose current DAG"]
+    adapt -->|No| validate
     compose --> validate["Validate tasks and dependencies"]
     validate --> ready{"Unfinished ready task?"}
-    ready -->|No unfinished tasks| complete(["Complete run"])
+    ready -->|No unfinished tasks| complete(["Complete or incomplete run"])
     ready -->|Yes| check["Check execution constraints"]
     check --> execute["Execute approved task"]
     execute --> commit["Validate and commit update"]
@@ -38,7 +42,9 @@ Each iteration assesses current facts and the previous situation. The planner
 receives the fixed goal, facts, current situation, and successful execution
 history. It returns a transient DAG whose task ids identify individual work
 occurrences. The runtime validates the plan and executes the first ready task in
-plan order. After the update commits, it immediately reassesses and replans.
+plan order. After the update commits, it immediately reassesses. Optional goal verification
+can stop; optional adaptation can retain unfinished work. Defaults preserve
+planning after every assessment. Initial and exhausted plans force planning.
 
 A full plan may include completed tasks. Their ids prevent re-execution and their
 node/dependency definitions cannot change. The planner may also return only the
@@ -51,12 +57,12 @@ task ids and is intended for chains without repeated node names.
 
 DAG construction rejects cycles and duplicate ids. Runtime validation rejects
 unknown nodes, missing dependencies, and redefined completed tasks. Multiple
-ready roots run sequentially; the entire pending graph is reconsidered after each
-root returns. There is no automatic parallel scheduling inside one run.
+ready roots run sequentially; adaptation can reconsider the pending graph after each root returns. There is no automatic parallel scheduling inside one run.
 
 ## 📊 Situation assessment
 
-`Situation` contains six normalized estimates and optional evidence. No signal is
+`Situation` contains six normalized estimates, optional evidence, and optional
+normalized named signals whose values may be unknown. No signal is
 silently inferred from user prose. The default assessment is an explicit signals
 bridge; applications provide an assessor that interprets their own observations.
 The research example derives uncertainty from source disagreement.
@@ -92,7 +98,7 @@ plan, and an interrupt id. Approval must be supplied as a `resume` argument by t
 host. A state key that claims approval has no effect on the built-in gate.
 
 Resume validates the graph definition signature, reassesses the saved facts, and
-rechecks the constraints. It does not run the planner before the pending action,
+rechecks the constraints. It does not run the planner, adapter, or goal verifier before the pending action,
 so an approval cannot silently be redirected to another task. If the assessment
 changes and the action still requires approval, it emits a new interrupt. After
 that task completes, the ordinary assessment/replanning loop resumes and the
@@ -118,9 +124,11 @@ event exposes the transient DAG and its reason. A terminal event holds a
 `Result`. No implicit retry occurs after a callback failure. Cancellation
 propagates; a cancelled await cannot forcibly terminate synchronous worker code.
 
-A `completed` result means the planner left no unfinished tasks. Goal truth is an
-application responsibility. Add a verification task or inspect completion in the
-planner when the application needs a stronger semantic contract.
+With `verify_goal`, a `completed` result means the host check was satisfied. A
+newly composed exhausted plan with an unsatisfied check returns `incomplete`.
+Without verification, completion retains its no-unfinished-tasks meaning.
+Research verification checks observed support and justified abstention; it cannot
+guarantee arbitrary factual truth. See [the research contract](research.md).
 
 ## 🔒 Trust and release scope
 
@@ -132,7 +140,7 @@ runtime's dispatch rather than all code behavior.
 
 Applications must serialize approval resumes, retire consumed checkpoints, and
 use idempotency keys for external effects. A process crash after an external
-operation but before a state commit can leave the outcome uncertain. 0.1.0 saves
+operation but before a state commit can leave the outcome uncertain. 0.2.0 saves
 approval checkpoints only; it does not provide durable journaling after every
 operation, recovery of in-flight tools, or exactly-once execution.
 
