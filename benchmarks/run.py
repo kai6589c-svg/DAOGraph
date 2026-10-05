@@ -62,7 +62,8 @@ def deny_network():
 def corpus_hashes():
     files = [*sorted((ROOT / "corpus").glob("*.json")), ROOT / "expected.json"]
     return {
-        str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in files
+        path.relative_to(ROOT).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in files
     }
 
 
