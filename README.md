@@ -20,6 +20,11 @@ The package has three implementation modules and no runtime dependencies:
 [Architecture](docs/architecture.md) ·
 [API reference](docs/api.md) · [Release guide](docs/releasing.md)
 
+The proposed [0.2.0 improvement plan](docs/plans/v0.2.0-research.md) focuses on
+evidence-driven research, selective replanning, explicit stopping criteria, and
+an offline benchmark with an optional online demonstration. These changes are
+planned; the current release is 0.1.0.
+
 ## 🚀 Install and run
 
 Clone the repository and install from source. This version has not been published
